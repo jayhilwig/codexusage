@@ -8,6 +8,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex Usage",
+    "brandColor": "#CB0F17",
     "composerIcon": "./assets/codex-usage-icon.svg",
     "logo": "./assets/codex-usage-logo.png",
     "shortDescription": "Show usage and reset status beside the Codex title bar.",
