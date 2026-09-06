@@ -4,21 +4,22 @@ using CodexUsage.Core.Window;
 namespace CodexUsage.Desktop.Platform;
 
 /// <summary>
-/// Finds the frontmost Codex window using public CoreGraphics window metadata.
-/// This deliberately does not use the Accessibility or screen-capture APIs, so
-/// the HUD does not need either privacy permission.
+/// Finds the frontmost Codex window with CoreGraphics and reads its live frame
+/// and minimized state through Accessibility once the user grants permission.
 /// </summary>
-internal sealed class MacCodexWindowTracker : ICodexWindowTracker
+internal sealed class MacCodexWindowTracker : ICodexWindowTracker, IPlatformPermissionStatus
 {
     private const string CodexBundleIdentifier = "com.openai.codex";
     private int _codexProcessId;
     private int _lastFrontmostProcessId;
     private bool _lastFrontmostWasCodex;
 
+    public bool HasRequiredPermission => MacAccessibilityInterop.IsTrusted();
+
     public bool TryGetSnapshot(out CodexWindowSnapshot? snapshot)
     {
         snapshot = null;
-        if (!OperatingSystem.IsMacOS())
+        if (!OperatingSystem.IsMacOS() || !HasRequiredPermission)
         {
             return false;
         }
@@ -56,6 +57,22 @@ internal sealed class MacCodexWindowTracker : ICodexWindowTracker
                         || processId == ownProcessId
                         || !IsCodexProcess(processId)
                         || !IsUsableMainWindow(window, out var bounds))
+                    {
+                        continue;
+                    }
+
+                    var minimized = false;
+                    var hidden = false;
+                    if (MacAccessibilityInterop.TryReadFocusedWindow(
+                            processId,
+                            out var accessibilityBounds,
+                            out minimized,
+                            out hidden))
+                    {
+                        bounds = accessibilityBounds;
+                    }
+
+                    if (hidden || minimized || bounds.Width <= 0 || bounds.Height <= 0)
                     {
                         continue;
                     }
@@ -130,6 +147,182 @@ internal sealed class MacCodexWindowTracker : ICodexWindowTracker
         return !MacCoreGraphics.TryReadDouble(window, MacCoreGraphics.WindowAlphaKey, out var alpha)
             || alpha > 0.01d;
     }
+}
+
+internal static class MacAccessibilityInterop
+{
+    private const string ApplicationServicesLibrary =
+        "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices";
+    private const string CoreFoundationLibrary =
+        "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
+    private const int AxSuccess = 0;
+    private const int AxValuePoint = 1;
+    private const int AxValueSize = 2;
+    private const uint Utf8StringEncoding = 0x08000100;
+
+    private static readonly nint FocusedWindowKey = CreateKey("AXFocusedWindow");
+    private static readonly nint HiddenKey = CreateKey("AXHidden");
+    private static readonly nint MinimizedKey = CreateKey("AXMinimized");
+    private static readonly nint PositionKey = CreateKey("AXPosition");
+    private static readonly nint SizeKey = CreateKey("AXSize");
+
+    internal static bool IsTrusted() =>
+        OperatingSystem.IsMacOS() && AXIsProcessTrusted();
+
+    internal static bool TryReadFocusedWindow(
+        int processId,
+        out ScreenRect bounds,
+        out bool minimized,
+        out bool hidden)
+    {
+        bounds = default;
+        minimized = false;
+        hidden = false;
+        var application = AXUIElementCreateApplication(processId);
+        if (application == nint.Zero)
+        {
+            return false;
+        }
+
+        try
+        {
+            hidden = TryReadBoolean(application, HiddenKey, out var hiddenValue) && hiddenValue;
+            if (!TryCopyAttribute(application, FocusedWindowKey, out var window))
+            {
+                return false;
+            }
+
+            try
+            {
+                minimized = TryReadBoolean(window, MinimizedKey, out var minimizedValue)
+                    && minimizedValue;
+                if (!TryCopyAttribute(window, PositionKey, out var position))
+                {
+                    return false;
+                }
+
+                try
+                {
+                    if (!TryCopyAttribute(window, SizeKey, out var size))
+                    {
+                        return false;
+                    }
+
+                    try
+                    {
+                        if (!AXValueGetPoint(position, AxValuePoint, out var point)
+                            || !AXValueGetSize(size, AxValueSize, out var dimensions)
+                            || !double.IsFinite(point.X)
+                            || !double.IsFinite(point.Y)
+                            || !double.IsFinite(dimensions.Width)
+                            || !double.IsFinite(dimensions.Height))
+                        {
+                            return false;
+                        }
+
+                        var left = (int)Math.Round(point.X);
+                        var top = (int)Math.Round(point.Y);
+                        var right = (int)Math.Round(point.X + dimensions.Width);
+                        var bottom = (int)Math.Round(point.Y + dimensions.Height);
+                        if (right <= left || bottom <= top)
+                        {
+                            return false;
+                        }
+
+                        bounds = new ScreenRect(left, top, right, bottom);
+                        return true;
+                    }
+                    finally
+                    {
+                        MacCoreGraphics.Release(size);
+                    }
+                }
+                finally
+                {
+                    MacCoreGraphics.Release(position);
+                }
+            }
+            finally
+            {
+                MacCoreGraphics.Release(window);
+            }
+        }
+        finally
+        {
+            MacCoreGraphics.Release(application);
+        }
+    }
+
+    private static bool TryCopyAttribute(nint element, nint attribute, out nint value) =>
+        AXUIElementCopyAttributeValue(element, attribute, out value) == AxSuccess
+        && value != nint.Zero;
+
+    private static bool TryReadBoolean(nint element, nint attribute, out bool value)
+    {
+        value = false;
+        if (!TryCopyAttribute(element, attribute, out var result))
+        {
+            return false;
+        }
+
+        try
+        {
+            value = CFBooleanGetValue(result);
+            return true;
+        }
+        finally
+        {
+            MacCoreGraphics.Release(result);
+        }
+    }
+
+    private static nint CreateKey(string value) =>
+        CFStringCreateWithCString(nint.Zero, value, Utf8StringEncoding);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly struct NativePoint
+    {
+        public readonly double X;
+        public readonly double Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly struct NativeSize
+    {
+        public readonly double Width;
+        public readonly double Height;
+    }
+
+    [DllImport(ApplicationServicesLibrary)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool AXIsProcessTrusted();
+
+    [DllImport(ApplicationServicesLibrary)]
+    private static extern nint AXUIElementCreateApplication(int processId);
+
+    [DllImport(ApplicationServicesLibrary)]
+    private static extern int AXUIElementCopyAttributeValue(
+        nint element,
+        nint attribute,
+        out nint value);
+
+    [DllImport(ApplicationServicesLibrary, EntryPoint = "AXValueGetValue")]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool AXValueGetPoint(nint value, int valueType, out NativePoint point);
+
+    [DllImport(ApplicationServicesLibrary, EntryPoint = "AXValueGetValue")]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool AXValueGetSize(nint value, int valueType, out NativeSize size);
+
+    [DllImport(CoreFoundationLibrary)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool CFBooleanGetValue(nint value);
+
+    [DllImport(CoreFoundationLibrary)]
+    private static extern nint CFStringCreateWithCString(
+        nint allocator,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string value,
+        uint encoding);
 }
 
 internal static class MacCoreGraphics

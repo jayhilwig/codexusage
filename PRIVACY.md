@@ -22,4 +22,4 @@ Locally cached state remains on the device until it is overwritten or deleted by
 
 ## Contact
 
-For questions or privacy requests, open an issue at https://github.com/jayhilwig/codex-usage/issues.
+For questions or privacy requests, open an issue at https://github.com/jayhilwig/codexusage/issues.

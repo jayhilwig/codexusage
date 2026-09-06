@@ -16,10 +16,14 @@ internal sealed class HudController : IAsyncDisposable
     private readonly CancellationTokenSource _cancellation = new();
     private readonly SemaphoreSlim _saveGate = new(1, 1);
     private readonly object _gate = new();
+    private readonly object _backgroundGate = new();
+    private readonly HashSet<Task> _backgroundTasks = [];
     private CodexResetsClient? _resetClient;
     private PersistedCompanionState _state = new();
     private PublicResetFetch _publicReset = new(false, null, null);
     private UsageSnapshot? _currentUsage;
+    private Task _usageLoop = Task.CompletedTask;
+    private Task _resetLoop = Task.CompletedTask;
 
     public HudController(HudViewModel viewModel, TitlebarHudWindow window)
     {
@@ -45,8 +49,8 @@ internal sealed class HudController : IAsyncDisposable
             RecomputeResetOnUiThread();
         });
 
-        _ = RunUsageLoopAsync(_cancellation.Token);
-        _ = RunResetLoopAsync(_cancellation.Token);
+        _usageLoop = RunUsageLoopAsync(_cancellation.Token);
+        _resetLoop = RunResetLoopAsync(_cancellation.Token);
     }
 
     private async Task RunUsageLoopAsync(CancellationToken cancellationToken)
@@ -65,7 +69,7 @@ internal sealed class HudController : IAsyncDisposable
         }
         catch
         {
-            await Dispatcher.UIThread.InvokeAsync(() => _viewModel.SetUsage(null));
+            Dispatcher.UIThread.Post(() => _viewModel.SetUsage(null));
         }
     }
 
@@ -89,7 +93,7 @@ internal sealed class HudController : IAsyncDisposable
                     }
                 }
 
-                await Dispatcher.UIThread.InvokeAsync(() =>
+                Dispatcher.UIThread.Post(() =>
                 {
                     _viewModel.SetLatestReset(fetch.Status?.Data.LatestReset, fetch.IsFresh);
                     RecomputeResetOnUiThread();
@@ -121,7 +125,27 @@ internal sealed class HudController : IAsyncDisposable
             _viewModel.SetUsage(snapshot);
             RecomputeResetOnUiThread();
         });
-        _ = SaveStateAsync(_cancellation.Token);
+        TrackBackground(SaveStateAsync(_cancellation.Token));
+    }
+
+    private void TrackBackground(Task task)
+    {
+        lock (_backgroundGate)
+        {
+            _backgroundTasks.Add(task);
+        }
+
+        _ = task.ContinueWith(
+            completedTask =>
+            {
+                lock (_backgroundGate)
+                {
+                    _backgroundTasks.Remove(completedTask);
+                }
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     private void RecomputeResetOnUiThread()
@@ -199,7 +223,29 @@ internal sealed class HudController : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        _usageClient.SnapshotChanged -= OnUsageChanged;
         _cancellation.Cancel();
+        try
+        {
+            await Task.WhenAll(_usageLoop, _resetLoop).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+
+        Task[] backgroundTasks;
+        lock (_backgroundGate)
+        {
+            backgroundTasks = [.. _backgroundTasks];
+        }
+        try
+        {
+            await Task.WhenAll(backgroundTasks).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+
         _resetClient?.Dispose();
         await _usageClient.DisposeAsync().ConfigureAwait(false);
         _saveGate.Dispose();

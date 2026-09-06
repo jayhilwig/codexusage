@@ -2,6 +2,11 @@ using CodexUsage.Core.Window;
 
 namespace CodexUsage.Desktop.Platform;
 
+internal interface IPlatformPermissionStatus
+{
+    bool HasRequiredPermission { get; }
+}
+
 internal static class PlatformTrackerFactory
 {
     public static ICodexWindowTracker Create()

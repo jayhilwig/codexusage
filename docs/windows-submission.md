@@ -6,10 +6,10 @@
 - Short description: Show Codex usage and resets.
 - Category: Productivity
 - Starter prompt: Start!
-- Website: https://github.com/jayhilwig/codex-usage
-- Support: https://github.com/jayhilwig/codex-usage/issues
-- Privacy policy: https://github.com/jayhilwig/codex-usage/blob/main/PRIVACY.md
-- Terms: https://github.com/jayhilwig/codex-usage/blob/main/TERMS.md
+- Website: https://github.com/jayhilwig/codexusage
+- Support: https://github.com/jayhilwig/codexusage/issues
+- Privacy policy: https://github.com/jayhilwig/codexusage/blob/main/PRIVACY.md
+- Terms: https://github.com/jayhilwig/codexusage/blob/main/TERMS.md
 
 ## Release notes
 
@@ -37,7 +37,7 @@ Initial Windows release. Codex Usage adds a compact companion to the Codex title
 - Self-contained packaged launch: passed from the staged plugin root.
 - Duplicate-instance behavior: passed.
 - Installed-cache launch: passed with the current plugin version.
-- Submission candidate: 45.96 MB compressed and 103.31 MB extracted, with no PDB files.
+- Windows release archive: approximately 46 MB compressed, contains only the Windows x64 runtime, and includes no PDB files.
 
 ## External checks before submission
 

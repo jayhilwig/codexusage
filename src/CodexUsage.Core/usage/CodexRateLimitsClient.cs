@@ -16,15 +16,15 @@ public sealed class CodexRateLimitsClient : ICodexRateLimitsSource
     private StreamWriter? _input;
     private CancellationTokenSource? _processCancellation;
     private Task? _readLoop;
+    private Task _notificationRefreshTask = Task.CompletedTask;
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
     private long _requestId;
     private int _notificationRefreshScheduled;
     private bool _available;
 
     public CodexRateLimitsClient(string? codexExecutable = null)
     {
-        _codexExecutable = codexExecutable
-            ?? Environment.GetEnvironmentVariable("CODEX_HUD_CODEX_PATH")
-            ?? "codex";
+        _codexExecutable = ResolveCodexExecutable(codexExecutable);
     }
 
     public event EventHandler<UsageSnapshot>? SnapshotChanged;
@@ -229,18 +229,81 @@ public sealed class CodexRateLimitsClient : ICodexRateLimitsSource
             return;
         }
 
-        _ = Task.Run(async () =>
+        _notificationRefreshTask = Task.Run(async () =>
         {
             try
             {
-                await Task.Delay(250).ConfigureAwait(false);
-                await RefreshAsync(CancellationToken.None).ConfigureAwait(false);
+                await Task.Delay(250, _lifetimeCancellation.Token).ConfigureAwait(false);
+                await RefreshAsync(_lifetimeCancellation.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
             }
             finally
             {
                 Interlocked.Exchange(ref _notificationRefreshScheduled, 0);
             }
         });
+    }
+
+    private static string ResolveCodexExecutable(string? requestedExecutable)
+    {
+        if (!string.IsNullOrWhiteSpace(requestedExecutable))
+        {
+            return requestedExecutable;
+        }
+
+        var configuredExecutable = Environment.GetEnvironmentVariable("CODEX_HUD_CODEX_PATH");
+        if (!string.IsNullOrWhiteSpace(configuredExecutable))
+        {
+            return configuredExecutable;
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            foreach (var candidate in new[]
+            {
+                "/Applications/Codex.app/Contents/Resources/codex",
+                "/Applications/ChatGPT.app/Contents/Resources/codex",
+            })
+            {
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                var binRoot = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "OpenAI",
+                    "Codex",
+                    "bin");
+                if (Directory.Exists(binRoot))
+                {
+                    var installedExecutable = Directory
+                        .EnumerateFiles(binRoot, "codex.exe", SearchOption.AllDirectories)
+                        .OrderByDescending(File.GetLastWriteTimeUtc)
+                        .FirstOrDefault();
+                    if (installedExecutable is not null)
+                    {
+                        return installedExecutable;
+                    }
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        }
+
+        return "codex";
     }
 
     private static UsageSnapshot ParseSnapshot(JsonElement result)
@@ -380,9 +443,19 @@ public sealed class CodexRateLimitsClient : ICodexRateLimitsSource
 
     public async ValueTask DisposeAsync()
     {
+        _lifetimeCancellation.Cancel();
+        try
+        {
+            await _notificationRefreshTask.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+
         await StopProcessAsync().ConfigureAwait(false);
         _startGate.Dispose();
         _refreshGate.Dispose();
         _writeGate.Dispose();
+        _lifetimeCancellation.Dispose();
     }
 }

@@ -82,9 +82,7 @@ internal sealed class TitlebarHudWindow : Window
         var panel = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            HorizontalAlignment = OperatingSystem.IsMacOS()
-                ? HorizontalAlignment.Left
-                : HorizontalAlignment.Right,
+            HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
             Spacing = 0,
             Children = { _usageButton, _resetButton },
@@ -121,17 +119,31 @@ internal sealed class TitlebarHudWindow : Window
 
         _usagePopover = new UsagePopoverWindow();
         _resetPopover = new ResetPopoverWindow();
-        _viewModel.Changed += (_, _) => Dispatcher.UIThread.Post(ApplyViewModel);
-        L.Changed += (_, _) => Dispatcher.UIThread.Post(ApplyViewModel);
+        _viewModel.Changed += OnViewModelChanged;
+        L.Changed += OnLocaleChanged;
 
         Opened += (_, _) => ConfigureNativeWindow();
-        var trackingInterval = OperatingSystem.IsMacOS()
-            ? TimeSpan.FromMilliseconds(200)
-            : TimeSpan.FromMilliseconds(100);
-        _trackerTimer = new DispatcherTimer(trackingInterval, DispatcherPriority.Normal, TrackTarget);
+        _trackerTimer = new DispatcherTimer(
+            TimeSpan.FromMilliseconds(100),
+            DispatcherPriority.Normal,
+            TrackTarget);
         _trackerTimer.Start();
+        Closed += (_, _) =>
+        {
+            _trackerTimer.Stop();
+            _usagePopover.Close();
+            _resetPopover.Close();
+            _viewModel.Changed -= OnViewModelChanged;
+            L.Changed -= OnLocaleChanged;
+        };
         ApplyViewModel();
     }
+
+    private void OnViewModelChanged(object? sender, EventArgs args) =>
+        Dispatcher.UIThread.Post(ApplyViewModel);
+
+    private void OnLocaleChanged(object? sender, EventArgs args) =>
+        Dispatcher.UIThread.Post(ApplyViewModel);
 
     private TextBlock MakeHudText(string text)
     {

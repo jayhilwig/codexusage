@@ -14,8 +14,11 @@ foreach ($runtime in $runtimes) {
     & dotnet restore $projectPath --runtime $runtime
     if ($LASTEXITCODE -ne 0) { throw "Restore failed for $runtime." }
     & dotnet publish $projectPath -c Release -r $runtime --self-contained true --no-restore `
-        -p:PublishSingleFile=false -p:PublishTrimmed=false -o $publishOutput
+        -p:PublishSingleFile=false -p:PublishTrimmed=false `
+        -p:DebugType=None -p:DebugSymbols=false -o $publishOutput
     if ($LASTEXITCODE -ne 0) { throw "Publish failed for $runtime." }
+    Get-ChildItem -LiteralPath $publishOutput -Filter '*.pdb' -Recurse -File |
+        Remove-Item -Force
 
     if ($runtime.StartsWith('osx-')) {
         $appBundle = Join-Path $output 'Codex Usage.app'
@@ -64,53 +67,87 @@ foreach ($runtime in $runtimes) {
 }
 
 $artifactRoot = Join-Path $pluginRoot 'artifacts'
-$staging = Join-Path $artifactRoot 'CodexUsage'
-if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
-New-Item -ItemType Directory -Path $staging -Force | Out-Null
-$pluginStaging = Join-Path $staging 'plugins\codex-usage'
-New-Item -ItemType Directory -Path $pluginStaging -Force | Out-Null
-foreach ($path in @('.codex-plugin', 'assets', 'skills', 'scripts', 'bin', 'docs')) {
-    Copy-Item -LiteralPath (Join-Path $pluginRoot $path) -Destination $pluginStaging -Recurse -Force
-}
-Copy-Item -LiteralPath (Join-Path $pluginRoot '.agents') -Destination $staging -Recurse -Force
-Copy-Item -LiteralPath (Join-Path $pluginRoot 'scripts\install-macos.sh') -Destination (Join-Path $staging 'install-macos.sh') -Force
-
-$marketplacePath = Join-Path $staging '.agents\plugins\marketplace.json'
-$pluginManifestPath = Join-Path $pluginStaging '.codex-plugin\plugin.json'
-if (-not (Test-Path -LiteralPath $marketplacePath)) { throw "USB package is missing $marketplacePath." }
-if (-not (Test-Path -LiteralPath $pluginManifestPath)) { throw "USB package is missing $pluginManifestPath." }
-
-$marketplace = Get-Content -Raw $marketplacePath | ConvertFrom-Json
-$entry = @($marketplace.plugins | Where-Object { $_.name -eq 'codex-usage' }) | Select-Object -First 1
-if ($null -eq $entry -or $entry.source.path -ne './plugins/codex-usage') {
-    throw 'USB package marketplace entry must point to ./plugins/codex-usage.'
-}
-
-$zipPath = Join-Path $artifactRoot ("CodexUsage-" + $manifest.version + '-usb.zip')
-if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-[System.IO.Compression.ZipFile]::CreateFromDirectory($staging, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 
-$archive = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
-try {
-    foreach ($entryName in @(
+$packageNames = @{
+    'win-x64' = 'windows-x64'
+    'osx-arm64' = 'macos-arm64'
+    'osx-x64' = 'macos-x64'
+}
+
+foreach ($runtime in $runtimes) {
+    $packageName = $packageNames[$runtime]
+    $staging = Join-Path $artifactRoot "CodexUsage-$packageName"
+    if (Test-Path -LiteralPath $staging) {
+        Remove-Item -LiteralPath $staging -Recurse -Force
+    }
+
+    $pluginStaging = Join-Path $staging 'plugins\codex-usage'
+    New-Item -ItemType Directory -Path $pluginStaging -Force | Out-Null
+    foreach ($path in @('.codex-plugin', 'assets', 'skills', 'scripts', 'docs')) {
+        Copy-Item -LiteralPath (Join-Path $pluginRoot $path) -Destination $pluginStaging -Recurse -Force
+    }
+
+    $runtimeStaging = Join-Path $pluginStaging (Join-Path 'bin' $runtime)
+    New-Item -ItemType Directory -Path (Split-Path -Parent $runtimeStaging) -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $pluginRoot (Join-Path 'bin' $runtime)) `
+        -Destination $runtimeStaging -Recurse -Force
+    Copy-Item -LiteralPath (Join-Path $pluginRoot '.agents') -Destination $staging -Recurse -Force
+
+    $installerName = if ($runtime -eq 'win-x64') { 'install-windows.ps1' } else { 'install-macos.sh' }
+    Copy-Item -LiteralPath (Join-Path $pluginRoot (Join-Path 'scripts' $installerName)) `
+        -Destination (Join-Path $staging $installerName) -Force
+
+    $marketplacePath = Join-Path $staging '.agents\plugins\marketplace.json'
+    $pluginManifestPath = Join-Path $pluginStaging '.codex-plugin\plugin.json'
+    if (-not (Test-Path -LiteralPath $marketplacePath)) {
+        throw "Codex Usage package is missing $marketplacePath."
+    }
+    if (-not (Test-Path -LiteralPath $pluginManifestPath)) {
+        throw "Codex Usage package is missing $pluginManifestPath."
+    }
+
+    $marketplace = Get-Content -Raw $marketplacePath | ConvertFrom-Json
+    $entry = @($marketplace.plugins | Where-Object { $_.name -eq 'codex-usage' }) | Select-Object -First 1
+    if ($null -eq $entry -or $entry.source.path -ne './plugins/codex-usage') {
+        throw 'Codex Usage marketplace entry must point to ./plugins/codex-usage.'
+    }
+
+    $zipPath = Join-Path $artifactRoot ("CodexUsage-" + $manifest.version + "-$packageName.zip")
+    if (Test-Path -LiteralPath $zipPath) {
+        Remove-Item -LiteralPath $zipPath -Force
+    }
+    [System.IO.Compression.ZipFile]::CreateFromDirectory(
+        $staging,
+        $zipPath,
+        [System.IO.Compression.CompressionLevel]::Optimal,
+        $false)
+
+    $expectedExecutable = if ($runtime -eq 'win-x64') {
+        "plugins/codex-usage/bin/$runtime/CodexUsage.Desktop.exe"
+    }
+    else {
+        "plugins/codex-usage/bin/$runtime/Codex Usage.app/Contents/MacOS/CodexUsage.Desktop"
+    }
+    $expectedEntries = @(
         '.agents/plugins/marketplace.json',
-        'install-macos.sh',
+        $installerName,
         'plugins/codex-usage/.codex-plugin/plugin.json',
-        'plugins/codex-usage/bin/osx-arm64/Codex Usage.app/Contents/Info.plist',
-        'plugins/codex-usage/bin/osx-arm64/Codex Usage.app/Contents/MacOS/CodexUsage.Desktop',
-        'plugins/codex-usage/bin/osx-x64/Codex Usage.app/Contents/Info.plist',
-        'plugins/codex-usage/bin/osx-x64/Codex Usage.app/Contents/MacOS/CodexUsage.Desktop',
-        'plugins/codex-usage/scripts/hud.sh')) {
-        # .NET stores ZIP entry separators as backslashes on Windows; normalize
-        # before comparing against the portable forward-slash paths above.
-        if (-not ($archive.Entries | Where-Object { ($_.FullName -replace '\\', '/') -eq $entryName })) {
-            throw "USB ZIP is missing $entryName."
+        $expectedExecutable
+    )
+
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
+    try {
+        $archiveEntries = @($archive.Entries | ForEach-Object { $_.FullName -replace '\\', '/' })
+        foreach ($entryName in $expectedEntries) {
+            if ($entryName -notin $archiveEntries) {
+                throw "Codex Usage package is missing $entryName."
+            }
         }
     }
-}
-finally {
-    $archive.Dispose()
-}
+    finally {
+        $archive.Dispose()
+    }
 
-Write-Output "USB-test ZIP: $zipPath"
+    Write-Output "Codex Usage package: $zipPath"
+}

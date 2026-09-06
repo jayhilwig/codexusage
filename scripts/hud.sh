@@ -91,10 +91,24 @@ case "$action" in
         fi
 
         # Packaged installs use the self-contained app and need neither launchd nor .NET.
-        if [ -d "$app_bundle" ] && [ -f "$packaged_helper" ]; then
+        if [ -d "$app_bundle" ] && [ -x "$packaged_helper" ]; then
             open "$app_bundle"
-            echo 'Codex Usage started.'
-            exit 0
+            attempts=0
+            while [ "$attempts" -lt 25 ]; do
+                packaged_pids=$(find_packaged_pids)
+                if [ -n "$packaged_pids" ]; then
+                    echo "Codex Usage started (PID $(printf '%s\n' "$packaged_pids" | sed -n '1p'))."
+                    exit 0
+                fi
+                attempts=$((attempts + 1))
+                sleep 0.2
+            done
+
+            echo "Codex Usage did not stay running after opening $app_bundle." >&2
+            exit 1
+        elif [ -f "$packaged_helper" ]; then
+            echo "Codex Usage helper is not executable: $packaged_helper" >&2
+            exit 1
         fi
 
         # A source checkout falls back to the local SDK and a transient development job.

@@ -10,4 +10,4 @@ Codex Usage is provided as-is, without warranties of uninterrupted operation, ac
 
 To the maximum extent permitted by applicable law, the developer is not liable for indirect, incidental, special, consequential, or business-interruption damages arising from use of the software.
 
-For support or questions, visit https://github.com/jayhilwig/codex-usage/issues.
+For support or questions, visit https://github.com/jayhilwig/codexusage/issues.

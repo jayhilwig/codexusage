@@ -1,7 +1,7 @@
 {
-  "name": "codex-usage-usb",
+  "name": "codex-usage-local",
   "interface": {
-    "displayName": "Codex Usage USB Test"
+    "displayName": "Codex Usage"
   },
   "plugins": [
     {
