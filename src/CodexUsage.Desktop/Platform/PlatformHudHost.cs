@@ -15,7 +15,7 @@ internal interface IPlatformHudHost
     void ApplyTheme(Window window, Border root, CodexWindowSnapshot? target);
     void ConfigureNativeWindow(Window window, CodexWindowSnapshot target);
     PixelPoint GetPosition(CodexWindowSnapshot target, int width, int height);
-    void Position(Window window, int x, int y, int width, int height);
+    void Position(Window window, CodexWindowSnapshot target, int x, int y, int width, int height);
 }
 
 internal static class PlatformHudHostFactory
@@ -63,7 +63,7 @@ internal sealed class WindowsHudHost : IPlatformHudHost
 
     public void ConfigureNativeWindow(Window window, CodexWindowSnapshot target)
     {
-        WindowsOverlayInterop.ConfigureHud(window.TryGetPlatformHandle()?.Handle ?? nint.Zero, target.NativeHandle);
+        WindowsOverlayInterop.ConfigureHud(window.TryGetPlatformHandle()?.Handle ?? nint.Zero);
     }
 
     public PixelPoint GetPosition(CodexWindowSnapshot target, int width, int height)
@@ -87,10 +87,16 @@ internal sealed class WindowsHudHost : IPlatformHudHost
         return new PixelPoint(Math.Max(target.Bounds.Left + margin, x), y + 3);
     }
 
-    public void Position(Window window, int x, int y, int width, int height)
+    public void Position(Window window, CodexWindowSnapshot target, int x, int y, int width, int height)
     {
         window.Position = new PixelPoint(x, y);
-        WindowsOverlayInterop.Position(window.TryGetPlatformHandle()?.Handle ?? nint.Zero, x, y, width, height);
+        WindowsOverlayInterop.Position(
+            window.TryGetPlatformHandle()?.Handle ?? nint.Zero,
+            target.NativeHandle,
+            x,
+            y,
+            width,
+            height);
     }
 }
 
@@ -153,7 +159,7 @@ internal sealed class MacHudHost : IPlatformHudHost
             target.Bounds.Bottom - accountRowHeight - margin - height);
     }
 
-    public void Position(Window window, int x, int y, int width, int height) =>
+    public void Position(Window window, CodexWindowSnapshot target, int x, int y, int width, int height) =>
         window.Position = new PixelPoint(x, y);
 }
 
@@ -194,6 +200,6 @@ internal sealed class SystemHudHost : IPlatformHudHost
             target.Bounds.Top + (int)Math.Round(5 * scale));
     }
 
-    public void Position(Window window, int x, int y, int width, int height) =>
+    public void Position(Window window, CodexWindowSnapshot target, int x, int y, int width, int height) =>
         window.Position = new PixelPoint(x, y);
 }

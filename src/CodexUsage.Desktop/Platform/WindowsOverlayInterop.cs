@@ -4,9 +4,9 @@ namespace CodexUsage.Desktop.Platform;
 
 internal static class WindowsOverlayInterop
 {
-    private const int GwlpHwndParent = -8;
     private const int GwlStyle = -16;
     private const int GwlExStyle = -20;
+    private const uint GwHwndPrev = 3;
     private const long WsPopup = unchecked((long)0x80000000);
     private const long WsCaption = 0x00C00000L;
     private const long WsThickFrame = 0x00040000L;
@@ -22,14 +22,13 @@ internal static class WindowsOverlayInterop
     private const uint SwpNoMove = 0x0002;
     private const uint SwpNoSize = 0x0001;
 
-    public static void ConfigureHud(nint hudWindow, nint codexWindow)
+    public static void ConfigureHud(nint hudWindow)
     {
         if (!OperatingSystem.IsWindows() || hudWindow == nint.Zero)
         {
             return;
         }
 
-        SetWindowLongPtr(hudWindow, GwlpHwndParent, codexWindow);
         var style = GetWindowLongPtr(hudWindow, GwlStyle).ToInt64();
         style = (style & ~(WsCaption | WsThickFrame | WsSysMenu | WsMinimizeBox | WsMaximizeBox)) | WsPopup;
         SetWindowLongPtr(hudWindow, GwlStyle, new nint(style));
@@ -45,14 +44,24 @@ internal static class WindowsOverlayInterop
             SwpNoActivate | SwpNoZOrder | SwpFrameChanged | SwpNoMove | SwpNoSize);
     }
 
-    public static void Position(nint window, int x, int y, int width, int height)
+    public static void Position(nint window, nint codexWindow, int x, int y, int width, int height)
     {
         if (!OperatingSystem.IsWindows() || window == nint.Zero)
         {
             return;
         }
 
-        SetWindowPos(window, nint.Zero, x, y, width, height, SwpNoActivate | SwpNoZOrder | SwpShowWindow);
+        var insertAfter = IsWindow(codexWindow)
+            ? GetWindow(codexWindow, GwHwndPrev)
+            : nint.Zero;
+        var flags = SwpNoActivate | SwpShowWindow;
+        if (insertAfter == window)
+        {
+            flags |= SwpNoZOrder;
+            insertAfter = nint.Zero;
+        }
+
+        SetWindowPos(window, insertAfter, x, y, width, height, flags);
     }
 
     private static nint SetWindowLongPtr(nint window, int index, nint newValue)
@@ -87,5 +96,12 @@ internal static class WindowsOverlayInterop
         int width,
         int height,
         uint flags);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindow(nint window);
+
+    [DllImport("user32.dll")]
+    private static extern nint GetWindow(nint window, uint command);
 
 }

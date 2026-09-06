@@ -252,7 +252,7 @@ internal sealed class TitlebarHudWindow : Window
         var width = (int)Math.Round(HudWidth * scale);
         var height = (int)Math.Round(HudHeight * scale);
         var position = _platformHud.GetPosition(target, width, height);
-        _platformHud.Position(this, position.X, position.Y, width, height);
+        _platformHud.Position(this, target, position.X, position.Y, width, height);
         if (!IsVisible)
         {
             Show();

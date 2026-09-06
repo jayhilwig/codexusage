@@ -10,7 +10,7 @@ Both implementations are live-verified. The Windows implementation remains isola
 
 - Finds the packaged Codex desktop window (`OpenAI.Codex_*\\app\\ChatGPT.exe`) or an unpackaged `OpenAI\\Codex\\Codex.exe` window.
 - Renders `5h -- · W -- ↺`, then updates it with real remaining percentages.
-- Uses an owned, borderless, no-activate window on Windows and a floating auxiliary panel on macOS.
+- Uses a borderless, no-activate window kept directly above Codex in Windows z-order and a floating auxiliary panel on macOS.
 - Polls window geometry every 100 ms on Windows and 200 ms on macOS, follows moves/resizes, handles platform display coordinates, and hides when Codex is not visible.
 - Opens compact usage and reset cards from the two control regions.
 - Uses the platform's native system UI font and compact white, softly shadowed popovers that dismiss when focus moves outside them.
@@ -25,7 +25,7 @@ The three V1 preference controls (launch with Windows, show reset indicator, sho
 
 - **.NET 10 / C#** for a small native process, async stdio JSON handling, and direct platform interop without a browser runtime.
 - **Avalonia 12.1.1** for one UI implementation that can run on Windows and macOS. Only the platform window tracker is OS-specific.
-- **Win32 + DWM APIs** for top-level window enumeration, process-path identification, caption-button bounds, minimized/cloaked state, dark-mode hint, ownership, and physical-pixel positioning.
+- **Win32 + DWM APIs** for top-level window enumeration, package/process identification, caption-button bounds, minimized/cloaked state, dark-mode hint, z-order, and physical-pixel positioning.
 - **CoreGraphics + AppKit metadata** for permission-free macOS window discovery, frontmost-app checks, and auxiliary-panel behavior.
 
 This keeps the cross-platform boundary explicit:
@@ -154,4 +154,4 @@ dotnet run --project tests\CodexUsage.Core.Tests\CodexUsage.Core.Tests.csproj
 
 The app-server method, notification, and rate-limit fields are documented by OpenAI. The codex-resets.com endpoint and payload are documented by its OpenAPI file. Windows positioning uses documented Win32/DWM APIs.
 
-The one packaging-specific dependency is Windows Codex window identification: the current Microsoft Store package runs its UI as `ChatGPT.exe` under a path containing `OpenAI.Codex_`. That executable/package naming is not an app-server contract and may change in a future Codex release. It is isolated to `WindowsCodexWindowTracker`, so updating it does not affect shared code or either data source.
+The one packaging-specific dependency is Windows Codex window identification. The tracker prefers the installed package-family identity beginning with `OpenAI.Codex_`, with the current `ChatGPT.exe` package path and unpackaged `Codex.exe` path retained as fallbacks. Those names are not an app-server contract and may change in a future Codex release. Identification remains isolated to `WindowsCodexWindowTracker`, so updating it does not affect shared code or either data source.

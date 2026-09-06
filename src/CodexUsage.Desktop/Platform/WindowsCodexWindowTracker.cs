@@ -7,9 +7,12 @@ namespace CodexUsage.Desktop.Platform;
 internal sealed class WindowsCodexWindowTracker : ICodexWindowTracker
 {
     private const uint ProcessQueryLimitedInformation = 0x1000;
+    private const int ErrorInsufficientBuffer = 122;
     private const int DwmwaCaptionButtonBounds = 5;
     private const int DwmwaCloaked = 14;
     private const int DwmwaUseImmersiveDarkMode = 20;
+    private const uint GwOwner = 4;
+    private const uint GaRootOwner = 3;
     private nint _cachedWindow;
 
     public bool TryGetSnapshot(out CodexWindowSnapshot? snapshot)
@@ -20,7 +23,12 @@ internal sealed class WindowsCodexWindowTracker : ICodexWindowTracker
             return false;
         }
 
-        if (_cachedWindow == nint.Zero || !IsWindow(_cachedWindow) || !IsCodexWindow(_cachedWindow))
+        if (_cachedWindow == nint.Zero
+            || !IsWindow(_cachedWindow)
+            || !IsWindowVisible(_cachedWindow)
+            || IsCloaked(_cachedWindow)
+            || GetWindow(_cachedWindow, GwOwner) != nint.Zero
+            || !IsCodexWindow(_cachedWindow))
         {
             _cachedWindow = FindCodexWindow();
         }
@@ -51,10 +59,14 @@ internal sealed class WindowsCodexWindowTracker : ICodexWindowTracker
     private static nint FindCodexWindow()
     {
         nint result = nint.Zero;
+        long largestArea = -1;
         var ownProcessId = Environment.ProcessId;
+        var foregroundRoot = GetAncestor(GetForegroundWindow(), GaRootOwner);
         EnumWindows((window, _) =>
         {
-            if (!IsWindowVisible(window))
+            if (!IsWindowVisible(window)
+                || IsCloaked(window)
+                || GetWindow(window, GwOwner) != nint.Zero)
             {
                 return true;
             }
@@ -67,8 +79,22 @@ internal sealed class WindowsCodexWindowTracker : ICodexWindowTracker
 
             if (IsCodexProcess(processId))
             {
-                result = window;
-                return false;
+                if (window == foregroundRoot)
+                {
+                    result = window;
+                    return false;
+                }
+
+                if (GetWindowRect(window, out var bounds))
+                {
+                    var area = (long)Math.Max(0, bounds.Right - bounds.Left)
+                        * Math.Max(0, bounds.Bottom - bounds.Top);
+                    if (area > largestArea)
+                    {
+                        largestArea = area;
+                        result = window;
+                    }
+                }
             }
 
             return true;
@@ -92,25 +118,40 @@ internal sealed class WindowsCodexWindowTracker : ICodexWindowTracker
 
         try
         {
+            var packagedCodex = IsCodexPackage(process);
             var capacity = 2048u;
             var path = new StringBuilder((int)capacity);
             if (!QueryFullProcessImageName(process, 0, path, ref capacity))
             {
-                return false;
+                return packagedCodex;
             }
 
             var executablePath = path.ToString();
             var fileName = Path.GetFileName(executablePath);
-            var packagedCodex = fileName.Equals("ChatGPT.exe", StringComparison.OrdinalIgnoreCase)
+            var packagedPath = fileName.Equals("ChatGPT.exe", StringComparison.OrdinalIgnoreCase)
                 && executablePath.Contains("\\WindowsApps\\OpenAI.Codex_", StringComparison.OrdinalIgnoreCase);
             var unpackagedCodex = fileName.Equals("Codex.exe", StringComparison.OrdinalIgnoreCase)
                 && executablePath.Contains("\\OpenAI\\Codex", StringComparison.OrdinalIgnoreCase);
-            return packagedCodex || unpackagedCodex;
+            return packagedCodex || packagedPath || unpackagedCodex;
         }
         finally
         {
             CloseHandle(process);
         }
+    }
+
+    private static bool IsCodexPackage(nint process)
+    {
+        uint capacity = 0;
+        if (GetPackageFamilyName(process, ref capacity, null) != ErrorInsufficientBuffer
+            || capacity == 0)
+        {
+            return false;
+        }
+
+        var familyName = new StringBuilder((int)capacity);
+        return GetPackageFamilyName(process, ref capacity, familyName) == 0
+            && familyName.ToString().StartsWith("OpenAI.Codex_", StringComparison.OrdinalIgnoreCase);
     }
 
     private static ScreenRect? ReadCaptionButtons(nint window, NativeRect windowBounds)
@@ -191,6 +232,15 @@ internal sealed class WindowsCodexWindowTracker : ICodexWindowTracker
     private static extern bool IsIconic(nint window);
 
     [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern nint GetAncestor(nint window, uint flags);
+
+    [DllImport("user32.dll")]
+    private static extern nint GetWindow(nint window, uint command);
+
+    [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetWindowRect(nint window, out NativeRect rect);
 
@@ -214,6 +264,12 @@ internal sealed class WindowsCodexWindowTracker : ICodexWindowTracker
     [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool CloseHandle(nint handle);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetPackageFamilyName(
+        nint process,
+        ref uint packageFamilyNameLength,
+        StringBuilder? packageFamilyName);
 
     [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")]
     private static extern int DwmGetWindowAttributeRect(
