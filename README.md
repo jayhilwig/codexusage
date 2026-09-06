@@ -1,5 +1,7 @@
 # Codex Usage title-bar plugin
 
+By Jay Hilwig — [jhilwig.com](https://jhilwig.com)
+
 A Codex plugin that manages a separate companion window placing live Codex usage and public reset status left of the caption buttons on Windows and above the lower-left account row on macOS. It does not patch, inject into, or alter the installed Codex app.
 
 The plugin manifest is `.codex-plugin/plugin.json`. Its `codex-usage-hud` skill starts, stops, or checks the native companion through `scripts/hud.ps1` on Windows or `scripts/hud.sh` on macOS. The operating-system overlay remains a separate process because Codex plugin UI cannot occupy these native app regions.
