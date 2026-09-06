@@ -1,12 +1,13 @@
 {
   "name": "codex-usage",
-  "version": "0.1.0+codex.20260905215240",
+  "version": "0.1.0+codex.20260906191257",
   "description": "Runs a local title-bar HUD for Codex usage and public reset status.",
   "author": {
-    "name": "Jay Hilwig"
+    "name": "Jay Hilwig",
+    "url": "https://jhilwig.com"
   },
-  "homepage": "https://github.com/jayhilwig/codex-usage",
-  "repository": "https://github.com/jayhilwig/codex-usage",
+  "homepage": "https://jhilwig.com",
+  "repository": "https://github.com/jayhilwig/codexusage",
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex Usage",
@@ -17,9 +18,9 @@
     "longDescription": "Starts and manages a private native companion overlay that follows the Codex window without modifying the installed Codex app.",
     "developerName": "Jay Hilwig",
     "category": "Productivity",
-    "websiteURL": "https://github.com/jayhilwig/codex-usage",
-    "privacyPolicyURL": "https://github.com/jayhilwig/codex-usage/blob/main/PRIVACY.md",
-    "termsOfServiceURL": "https://github.com/jayhilwig/codex-usage/blob/main/TERMS.md",
+    "websiteURL": "https://jhilwig.com",
+    "privacyPolicyURL": "https://github.com/jayhilwig/codexusage/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/jayhilwig/codexusage/blob/main/TERMS.md",
     "capabilities": [
       "Interactive"
     ],
