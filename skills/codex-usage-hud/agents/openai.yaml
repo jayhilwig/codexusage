@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex Usage"
-  short_description: "Start or stop the native Codex usage overlay."
+  short_description: "Show Codex usage and resets."
   default_prompt: "Start!"

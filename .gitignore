@@ -1,5 +1,6 @@
 bin/
 obj/
 .tmp/
+artifacts/
 *.user
 *.suo

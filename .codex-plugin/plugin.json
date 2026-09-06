@@ -5,16 +5,21 @@
   "author": {
     "name": "Jay Hilwig"
   },
+  "homepage": "https://github.com/jayhilwig/codex-usage",
+  "repository": "https://github.com/jayhilwig/codex-usage",
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex Usage",
     "brandColor": "#CB0F17",
     "composerIcon": "./assets/codex-usage-icon.svg",
     "logo": "./assets/codex-usage-logo.png",
-    "shortDescription": "Show usage and reset status beside the Codex title bar.",
+    "shortDescription": "Show Codex usage and resets.",
     "longDescription": "Starts and manages a private native companion overlay that follows the Codex window without modifying the installed Codex app.",
     "developerName": "Jay Hilwig",
     "category": "Productivity",
+    "websiteURL": "https://github.com/jayhilwig/codex-usage",
+    "privacyPolicyURL": "https://github.com/jayhilwig/codex-usage/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/jayhilwig/codex-usage/blob/main/TERMS.md",
     "capabilities": [
       "Interactive"
     ],
