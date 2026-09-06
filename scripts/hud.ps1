@@ -7,12 +7,14 @@ param(
 $ErrorActionPreference = 'Stop'
 $processName = 'CodexUsage.Desktop'
 $pluginRoot = Split-Path -Parent $PSScriptRoot
+$isWindowsHost = ($env:OS -eq 'Windows_NT') -or [bool]$IsWindows
+$isMacHost = [bool]$IsMacOS
 
-if ($IsWindows) {
+if ($isWindowsHost) {
     $runtimeId = 'win-x64'
     $executableName = 'CodexUsage.Desktop.exe'
 }
-elseif ($IsMacOS) {
+elseif ($isMacHost) {
     $runtimeId = if ([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture -eq 'Arm64') { 'osx-arm64' } else { 'osx-x64' }
     $executableName = 'CodexUsage.Desktop'
 }
@@ -65,6 +67,6 @@ if (-not (Test-Path -LiteralPath $executablePath)) {
 }
 
 $startParameters = @{ FilePath = $executablePath; WorkingDirectory = $outputDirectory; PassThru = $true }
-if ($IsWindows) { $startParameters.WindowStyle = 'Hidden' }
+if ($isWindowsHost) { $startParameters.WindowStyle = 'Hidden' }
 $process = Start-Process @startParameters
 Write-Output "Codex Usage started (PID $($process.Id))."

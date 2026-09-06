@@ -102,7 +102,9 @@ try {
         'plugins/codex-usage/bin/osx-x64/Codex Usage.app/Contents/Info.plist',
         'plugins/codex-usage/bin/osx-x64/Codex Usage.app/Contents/MacOS/CodexUsage.Desktop',
         'plugins/codex-usage/scripts/hud.sh')) {
-        if (-not ($archive.Entries | Where-Object FullName -eq $entryName)) {
+        # .NET stores ZIP entry separators as backslashes on Windows; normalize
+        # before comparing against the portable forward-slash paths above.
+        if (-not ($archive.Entries | Where-Object { ($_.FullName -replace '\\', '/') -eq $entryName })) {
             throw "USB ZIP is missing $entryName."
         }
     }
