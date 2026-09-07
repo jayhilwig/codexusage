@@ -8,6 +8,26 @@ The plugin manifest is `.codex-plugin/plugin.json`. Its `codex-usage-hud` skill 
 
 The Windows implementation is live-verified and remains isolated from the Mac host. macOS uses CoreGraphics for process/window discovery and Accessibility for authoritative window geometry and minimized state. If access is missing, Codex Usage shows a focused setup window and starts the HUD automatically after permission is granted. Packaged builds contain self-contained helpers for all supported architectures.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td>
+      <img width="932" height="204" alt="Screenshot 2026-09-07 140729" src="https://github.com/user-attachments/assets/f8698479-e0a9-4ba0-8c80-75f2a51f06da" />
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<table>
+  <tr>
+    <td>
+      <img width="937" height="199" alt="Screenshot 2026-09-07 140736" src="https://github.com/user-attachments/assets/62cb0152-30a7-4f30-8414-d992c688efd3" />
+    </td>
+  </tr>
+</table>
+
 ## What the POC includes
 
 - Finds the packaged Codex desktop window (`OpenAI.Codex_*\\app\\ChatGPT.exe`) or an unpackaged `OpenAI\\Codex\\Codex.exe` window.
