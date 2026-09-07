@@ -50,8 +50,23 @@ if ($Action -eq 'Stop') {
         exit 0
     }
 
-    $running | Stop-Process
-    $running | Wait-Process -Timeout 5
+    $processIds = @($running | ForEach-Object { $_.Id })
+    foreach ($processId in $processIds) {
+        Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+    }
+
+    $deadline = [DateTime]::UtcNow.AddSeconds(5)
+    do {
+        $remaining = @($processIds | Where-Object {
+            $null -ne (Get-Process -Id $_ -ErrorAction SilentlyContinue)
+        })
+        if ($remaining.Count -eq 0) { break }
+        Start-Sleep -Milliseconds 100
+    } while ([DateTime]::UtcNow -lt $deadline)
+
+    if ($remaining.Count -gt 0) {
+        throw "Codex Usage did not stop within 5 seconds (PID $($remaining -join ', '))."
+    }
     Write-Output 'Codex Usage stopped.'
     exit 0
 }

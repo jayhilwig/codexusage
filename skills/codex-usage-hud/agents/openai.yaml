@@ -1,4 +1,7 @@
 interface:
   display_name: "Codex Usage"
   short_description: "Show Codex usage and resets."
+  icon_small: "assets/codex-usage-logo.png"
+  icon_large: "assets/codex-usage-logo.png"
+  brand_color: "#CB0F17"
   default_prompt: "Start!"

@@ -108,7 +108,7 @@ A confirmed event remains green for six hours. The resolver never treats the pub
 
 ## Run
 
-Source requirements: Windows 10/11 or macOS 13+, .NET 10 SDK, a current signed-in Codex CLI on `PATH`, and the Codex desktop window running. Packaged self-contained helpers do not require .NET on the target machine.
+Source requirements: Windows 10/11 or macOS 13+, .NET 10 SDK, a current signed-in Codex CLI on `PATH`, and the Codex desktop window running. Packaged self-contained helpers do not require .NET on the target machine. The HUD must run from a local Codex desktop host; ChatGPT web/mobile, Codex cloud, and other remote hosts cannot launch the native overlay on the user's computer.
 
 ```powershell
 dotnet restore src\CodexUsage.Desktop\CodexUsage.Desktop.csproj
