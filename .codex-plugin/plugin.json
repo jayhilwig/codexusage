@@ -1,6 +1,6 @@
 {
   "name": "codex-usage",
-  "version": "0.1.0+codex.20260907002722",
+  "version": "0.1.0+codex.20260907002724",
   "description": "Runs a local title-bar HUD for Codex usage and public reset status.",
   "author": {
     "name": "Jay Hilwig",
@@ -12,7 +12,7 @@
   "interface": {
     "displayName": "Codex Usage",
     "brandColor": "#CB0F17",
-    "composerIcon": "./assets/codex-usage-logo.png",
+    "composerIcon": "./assets/codex-usage-icon.svg",
     "logo": "./assets/codex-usage-logo.png",
     "shortDescription": "Show Codex usage and resets.",
     "longDescription": "Starts and manages a private native companion overlay that follows the Codex window without modifying the installed Codex app.",
