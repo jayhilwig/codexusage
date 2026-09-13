@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -24,7 +25,10 @@ internal sealed class ResetPopoverWindow : CompanionPopoverWindow
             content.Children.Add(MakeBody(
                 latest.AnnouncedAt.ToLocalTime().ToString("g", L.Culture)));
             content.Children.Add(MakeSecondary(HudViewModel.FormatLongAge(latest.AnnouncedAt, now)));
-            var summary = MakeBody(HudViewModel.SummarizeAnnouncement(latest.Text));
+            var summary = MakeBody(
+                OperatingSystem.IsMacOS()
+                    ? latest.Text
+                    : HudViewModel.SummarizeAnnouncement(latest.Text));
             summary.TextWrapping = TextWrapping.Wrap;
             summary.TextTrimming = TextTrimming.CharacterEllipsis;
             summary.MaxLines = 2;
@@ -35,7 +39,13 @@ internal sealed class ResetPopoverWindow : CompanionPopoverWindow
             {
                 var link = new Button
                 {
-                    Content = $"{L.Get("ViewSource")} →",
+                    Content = OperatingSystem.IsMacOS()
+                        ? new TextBlock
+                        {
+                            Text = $"{L.Get("ViewSource")} →",
+                            Foreground = new SolidColorBrush(Color.Parse("#339cff")),
+                        }
+                        : $"{L.Get("ViewSource")} →",
                     HorizontalAlignment = HorizontalAlignment.Left,
                     Padding = new Avalonia.Thickness(0, 2, 0, 0),
                     Background = Brushes.Transparent,
