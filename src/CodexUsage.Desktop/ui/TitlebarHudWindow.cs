@@ -64,6 +64,8 @@ internal sealed class TitlebarHudWindow : Window
         {
             _resetText.FontSize *= 1.25;
             _resetText.LineHeight = 16;
+            _resetText.HorizontalAlignment = HorizontalAlignment.Center;
+            _resetText.VerticalAlignment = VerticalAlignment.Center;
         }
         _resetText.Margin = new Thickness(0, -1, 0, 0);
 
@@ -76,13 +78,22 @@ internal sealed class TitlebarHudWindow : Window
         };
         _usageButton = MakeHudButton(usageLine, new Thickness(5, 0, 4, 0), ToggleUsagePopover);
         _resetButton = MakeHudButton(_resetText, new Thickness(4, 0, 5, 0), ToggleResetPopover);
+        if (OperatingSystem.IsMacOS())
+        {
+            _resetButton.MinWidth = 44;
+            _resetButton.Width = 44;
+            _resetButton.MinHeight = 44;
+            _resetButton.Height = 44;
+        }
         ToolTip.SetTip(_usageButton, L.Get("UsageRemaining"));
         ToolTip.SetTip(_resetButton, L.Get("ResetUnavailable"));
 
         var panel = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
+            HorizontalAlignment = OperatingSystem.IsMacOS()
+                ? HorizontalAlignment.Left
+                : HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
             Spacing = 0,
             Children = { _usageButton, _resetButton },

@@ -100,7 +100,7 @@ internal sealed class UsagePopoverWindow : CompanionPopoverWindow
     private static Border MakeCreditsRow(CodexUsage.Core.Usage.CreditBalance credits)
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        var label = MakeSecondary(L.Get("Credits"));
+        var label = MakeSecondary(OperatingSystem.IsWindows() ? "View credits →" : L.Get("Credits"));
         label.Foreground = new SolidColorBrush(Color.Parse("#339cff"));
         var roundedBalance = Math.Round(credits.Balance, 0, MidpointRounding.AwayFromZero);
         var balance = MakeSecondary(L.Get("CreditCount", roundedBalance));
@@ -115,6 +115,11 @@ internal sealed class UsagePopoverWindow : CompanionPopoverWindow
             Cursor = new Cursor(StandardCursorType.Hand),
             Child = grid,
         };
+        if (OperatingSystem.IsWindows())
+        {
+            row.PointerEntered += (_, _) => label.TextDecorations = TextDecorations.Underline;
+            row.PointerExited += (_, _) => label.TextDecorations = null;
+        }
         row.PointerReleased += (_, eventArgs) =>
         {
             if (eventArgs.InitialPressMouseButton == MouseButton.Left && row.IsPointerOver)

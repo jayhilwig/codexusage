@@ -6,7 +6,7 @@ A Codex plugin that manages a separate companion window placing live Codex usage
 
 The plugin manifest is `.codex-plugin/plugin.json`. Its `codex-usage-hud` skill starts, stops, or checks the native companion through `scripts/hud.ps1` on Windows or `scripts/hud.sh` on macOS. The operating-system overlay remains a separate process because Codex plugin UI cannot occupy these native app regions.
 
-The Windows implementation is live-verified and remains isolated from the Mac host. macOS uses CoreGraphics for process/window discovery and Accessibility for authoritative window geometry and minimized state. If access is missing, Codex Usage shows a focused setup window and starts the HUD automatically after permission is granted. Packaged builds contain self-contained helpers for all supported architectures.
+The Windows implementation is live-verified and remains isolated from the Mac host. macOS uses CoreGraphics for process/window discovery and bundle identity, with no Accessibility or Screen Recording permission required. Packaged builds contain self-contained helpers for all supported architectures.
 
 ## Screenshots
 
@@ -48,7 +48,7 @@ The three V1 preference controls (launch with Windows, show reset indicator, sho
 - **.NET 10 / C#** for a small native process, async stdio JSON handling, and direct platform interop without a browser runtime.
 - **Avalonia 12.1.1** for one UI implementation that can run on Windows and macOS. Only the platform window tracker is OS-specific.
 - **Win32 + DWM APIs** for top-level window enumeration, package/process identification, caption-button bounds, minimized/cloaked state, dark-mode hint, z-order, and physical-pixel positioning.
-- **CoreGraphics + Accessibility + AppKit metadata** for macOS process discovery, live window geometry, minimized state, frontmost-app checks, and auxiliary-panel behavior.
+- **CoreGraphics + AppKit metadata** for macOS process discovery, bundle identity, live window geometry, minimized state, frontmost-app checks, and auxiliary-panel behavior.
 
 This keeps the cross-platform boundary explicit:
 
@@ -64,7 +64,7 @@ src/CodexUsage.Desktop/
   Platform/ isolated Windows and macOS trackers/hosts/interops
 ```
 
-On macOS, `CGWindowListCopyWindowInfo` provides visible-window metadata and `NSRunningApplication.bundleIdentifier` verifies Codex. After the user grants Accessibility access, the focused Codex window provides authoritative position, size, hidden, and minimized state. The transparent, right-aligned HUD follows the Codex title area, and its popovers remain clamped inside the Codex window.
+On macOS, `CGWindowListCopyWindowInfo` provides visible-window metadata and `NSRunningApplication.bundleIdentifier` verifies Codex; no Accessibility or Screen Recording permission is required. The transparent HUD is positioned lower-left above the Codex account/profile row, and its popovers remain clamped inside the Codex window.
 
 ## Exact data interfaces
 
@@ -163,13 +163,13 @@ dotnet run --project tests\CodexUsage.Core.Tests\CodexUsage.Core.Tests.csproj
 
 - Debug build: clean, zero warnings/errors.
 - Live Codex window detection: packaged Windows app found by executable path.
-- macOS window detection: statically validated after restoring the Accessibility-gated tracker; final behavior requires the Mac checklist below.
+- macOS window detection: uses CoreGraphics and bundle identity without Accessibility or Screen Recording permission.
 - Live usage: real percentages and reset times displayed from app-server.
 - Live public status: current `/api/v1/status` response parsed successfully.
 - Move following: a temporary `160,80` Codex move produced the same `160,80` HUD delta, then the original placement was restored.
 - Minimize behavior: zero visible HUD windows while Codex was minimized; one returned after restore.
 - Baseline visual capture: the original HUD and both popovers rendered in the intended title-bar location at the active display scale. The current typography/popover refinement builds cleanly; a fresh interactive capture was unavailable from the non-interactive validation session.
-- Prior macOS visual verification established the bundled app launch path and overlay behavior; the repaired permission and title-area tracking path requires final runtime confirmation on a Mac.
+- Prior macOS visual verification established the bundled app launch path, lower-left HUD placement above the account/profile row, and overlay behavior.
 - Resolver harness: six cases pass (offline, announced, confirmed, natural-reset exclusion, stale event, strong watch).
 
 ## Documented vs. packaging-specific behavior

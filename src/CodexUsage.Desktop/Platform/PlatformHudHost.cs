@@ -84,7 +84,7 @@ internal sealed class WindowsHudHost : IPlatformHudHost
             y = target.Bounds.Top + (int)Math.Round(5 * scale);
         }
 
-        return new PixelPoint(Math.Max(target.Bounds.Left + margin, x), y + 3);
+        return new PixelPoint(Math.Max(target.Bounds.Left + margin, x), y - 4);
     }
 
     public void Position(Window window, CodexWindowSnapshot target, int x, int y, int width, int height)
@@ -102,8 +102,8 @@ internal sealed class WindowsHudHost : IPlatformHudHost
 
 internal sealed class MacHudHost : IPlatformHudHost
 {
-    private const double SideInset = 12;
-    private const double TopInset = 5;
+    private const double SidebarLeftInset = 16;
+    private const double AccountRowHeight = 56;
 
     public void Initialize(Window window)
     {
@@ -123,12 +123,20 @@ internal sealed class MacHudHost : IPlatformHudHost
 
     public void ConfigureRoot(Border root)
     {
-        root.Background = Brushes.Transparent;
+        root.Padding = new Thickness(3, 0);
+        root.BorderThickness = new Thickness(1);
+        root.CornerRadius = new CornerRadius(7);
+        root.Background = new SolidColorBrush(Color.Parse("#F02B2B2B"));
+        root.BorderBrush = new SolidColorBrush(Color.Parse("#35FFFFFF"));
     }
 
     public void ApplyTheme(Window window, Border root, CodexWindowSnapshot? target)
     {
-        root.Background = Brushes.Transparent;
+        var dark = target?.IsDarkMode ?? true;
+        root.Background = new SolidColorBrush(
+            Color.Parse(dark ? "#F02B2B2B" : "#F0F4F4F4"));
+        root.BorderBrush = new SolidColorBrush(
+            Color.Parse(dark ? "#35FFFFFF" : "#24000000"));
     }
 
     public void ConfigureNativeWindow(Window window, CodexWindowSnapshot target)
@@ -143,11 +151,12 @@ internal sealed class MacHudHost : IPlatformHudHost
     public PixelPoint GetPosition(CodexWindowSnapshot target, int width, int height)
     {
         var scale = Math.Max(1, target.DisplayScale);
-        var sideInset = (int)Math.Round(SideInset * scale);
-        var topInset = (int)Math.Round(TopInset * scale);
+        var sideInset = (int)Math.Round(SidebarLeftInset * scale);
+        var accountRowHeight = (int)Math.Round(AccountRowHeight * scale);
+        var margin = (int)Math.Round(8 * scale);
         return new PixelPoint(
-            Math.Max(target.Bounds.Left + sideInset, target.Bounds.Right - sideInset - width),
-            target.Bounds.Top + topInset);
+            target.Bounds.Left + sideInset,
+            target.Bounds.Bottom - accountRowHeight - margin - height);
     }
 
     public void Position(Window window, CodexWindowSnapshot target, int x, int y, int width, int height) =>
