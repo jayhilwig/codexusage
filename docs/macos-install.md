@@ -16,7 +16,9 @@ This is an unsigned self-contained build. The target Mac does not need Git, Visu
 5. If Gatekeeper blocks the unsigned app, use **System Settings → Privacy & Security → Open Anyway**, or remove quarantine only from the copied local app bundle:
 
    ```sh
-   xattr -dr com.apple.quarantine ~/Applications/CodexUsage/plugins/codex-usage/bin/osx-arm64/Codex\ Usage.app
+   for runtime in osx-arm64 osx-x64; do
+     xattr -dr com.apple.quarantine "$HOME/Applications/CodexUsage/plugins/codex-usage/bin/$runtime/Codex Usage.app"
+   done
    ```
 
    Do not disable Gatekeeper globally.

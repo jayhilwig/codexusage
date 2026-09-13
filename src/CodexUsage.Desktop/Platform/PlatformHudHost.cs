@@ -84,7 +84,7 @@ internal sealed class WindowsHudHost : IPlatformHudHost
             y = target.Bounds.Top + (int)Math.Round(5 * scale);
         }
 
-        return new PixelPoint(Math.Max(target.Bounds.Left + margin, x), y + 3);
+        return new PixelPoint(Math.Max(target.Bounds.Left + margin, x), y - 4);
     }
 
     public void Position(Window window, CodexWindowSnapshot target, int x, int y, int width, int height)

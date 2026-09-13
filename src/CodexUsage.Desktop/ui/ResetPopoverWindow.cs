@@ -26,7 +26,7 @@ internal sealed class ResetPopoverWindow : CompanionPopoverWindow
                 latest.AnnouncedAt.ToLocalTime().ToString("g", L.Culture)));
             content.Children.Add(MakeSecondary(HudViewModel.FormatLongAge(latest.AnnouncedAt, now)));
             var summary = MakeBody(
-                OperatingSystem.IsMacOS()
+                OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
                     ? latest.Text
                     : HudViewModel.SummarizeAnnouncement(latest.Text));
             summary.TextWrapping = TextWrapping.Wrap;
@@ -37,26 +37,56 @@ internal sealed class ResetPopoverWindow : CompanionPopoverWindow
 
             if (TryGetSourceUrl(latest.Source.Url, out var sourceUrl))
             {
-                var link = new Button
+                if (OperatingSystem.IsWindows())
                 {
-                    Content = OperatingSystem.IsMacOS()
-                        ? new TextBlock
+                    var linkText = new TextBlock
+                    {
+                        Text = "View source →",
+                        Foreground = new SolidColorBrush(Color.Parse("#339cff")),
+                        FontFamily = FontFamily.Default,
+                        FontSize = 12,
+                    };
+                    var link = new Border
+                    {
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        Padding = new Avalonia.Thickness(0, 2, 0, 0),
+                        Background = Brushes.Transparent,
+                        Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand),
+                        Child = linkText,
+                    };
+                    link.PointerEntered += (_, _) => linkText.TextDecorations = TextDecorations.Underline;
+                    link.PointerExited += (_, _) => linkText.TextDecorations = null;
+                    link.PointerReleased += (_, eventArgs) =>
+                    {
+                        if (eventArgs.InitialPressMouseButton == Avalonia.Input.MouseButton.Left
+                            && link.IsPointerOver)
+                        {
+                            OpenSource(sourceUrl);
+                        }
+                    };
+                    content.Children.Add(link);
+                }
+                else
+                {
+                    var link = new Button
+                    {
+                        Content = new TextBlock
                         {
                             Text = $"{L.Get("ViewSource")} →",
                             Foreground = new SolidColorBrush(Color.Parse("#339cff")),
-                        }
-                        : $"{L.Get("ViewSource")} →",
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    Padding = new Avalonia.Thickness(0, 2, 0, 0),
-                    Background = Brushes.Transparent,
-                    BorderThickness = new Avalonia.Thickness(0),
-                    Foreground = new SolidColorBrush(Color.Parse("#339cff")),
-                    FontFamily = FontFamily.Default,
-                    FontSize = 12,
-                    Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand),
-                };
-                link.Click += (_, _) => OpenSource(sourceUrl);
-                content.Children.Add(link);
+                        },
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        Padding = new Avalonia.Thickness(0, 2, 0, 0),
+                        Background = Brushes.Transparent,
+                        BorderThickness = new Avalonia.Thickness(0),
+                        Foreground = new SolidColorBrush(Color.Parse("#339cff")),
+                        FontFamily = FontFamily.Default,
+                        FontSize = 12,
+                        Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand),
+                    };
+                    link.Click += (_, _) => OpenSource(sourceUrl);
+                    content.Children.Add(link);
+                }
             }
         }
         else
