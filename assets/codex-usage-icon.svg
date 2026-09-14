@@ -1,8 +1,10 @@
-<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
 	<style>
 		.s0 { fill: #000000 }
 		.s1 { fill: #cb0f17 }
 	</style>
-	<path id="Layer 1" fill-rule="evenodd" class="s0" d="m12 23c-6.08 0-11-4.92-11-11 0-6.08 4.92-11 11-11 6.08 0 11 4.92 11 11 0 6.08-4.92 11-11 11z"/>
-	<path id="Layer 2" fill-rule="evenodd" class="s1" d="m8.32 17.15c-0.93 0.74-2.28 0.59-3.02-0.34-0.74-0.93-0.55-2.23 0.38-2.97 0 0 11.7-8.09 12.44-7.16l-0.04-0.05c0.74 0.93-9.76 10.52-9.76 10.52z"/>
+	<g transform="scale(2)">
+		<path id="Layer 1" fill-rule="evenodd" class="s0" d="m12 23c-6.08 0-11-4.92-11-11 0-6.08 4.92-11 11-11 6.08 0 11 4.92 11 11 0 6.08-4.92 11-11 11z"/>
+		<path id="Layer 2" fill-rule="evenodd" class="s1" d="m8.32 17.15c-0.93 0.74-2.28 0.59-3.02-0.34-0.74-0.93-0.55-2.23 0.38-2.97 0 0 11.7-8.09 12.44-7.16l-0.04-0.05c0.74 0.93-9.76 10.52-9.76 10.52z"/>
+	</g>
 </svg>
