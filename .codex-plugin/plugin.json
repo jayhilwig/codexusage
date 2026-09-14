@@ -1,6 +1,6 @@
 {
   "name": "codex-usage",
-  "version": "0.1.0+codex.20260913041315",
+  "version": "0.1.0+codex.20260914101133",
   "description": "Runs a local title-bar HUD for Codex usage and public reset status.",
   "author": {
     "name": "Jay Hilwig",

@@ -21,6 +21,7 @@ internal static class WindowsOverlayInterop
     private const uint SwpFrameChanged = 0x0020;
     private const uint SwpNoMove = 0x0002;
     private const uint SwpNoSize = 0x0001;
+    private const uint MonitorDefaultToNearest = 2;
 
     public static void ConfigureHud(nint hudWindow)
     {
@@ -64,6 +65,23 @@ internal static class WindowsOverlayInterop
         SetWindowPos(window, insertAfter, x, y, width, height, flags);
     }
 
+    public static int GetMaximizedTopInset(nint window, int windowTop)
+    {
+        if (!OperatingSystem.IsWindows() || window == nint.Zero || !IsZoomed(window))
+        {
+            return 0;
+        }
+
+        var monitor = MonitorFromWindow(window, MonitorDefaultToNearest);
+        var monitorInfo = new MonitorInfo
+        {
+            Size = (uint)Marshal.SizeOf<MonitorInfo>(),
+        };
+        return monitor != nint.Zero && GetMonitorInfo(monitor, ref monitorInfo)
+            ? Math.Max(0, monitorInfo.WorkArea.Top - windowTop)
+            : 0;
+    }
+
     private static nint SetWindowLongPtr(nint window, int index, nint newValue)
         => nint.Size == 8
             ? SetWindowLongPtr64(window, index, newValue)
@@ -73,6 +91,24 @@ internal static class WindowsOverlayInterop
         => nint.Size == 8
             ? GetWindowLongPtr64(window, index)
             : new nint(GetWindowLong32(window, index));
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MonitorInfo
+    {
+        public uint Size;
+        public NativeRect Monitor;
+        public NativeRect WorkArea;
+        public uint Flags;
+    }
 
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
     private static extern nint SetWindowLongPtr64(nint window, int index, nint newValue);
@@ -100,6 +136,17 @@ internal static class WindowsOverlayInterop
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsWindow(nint window);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsZoomed(nint window);
+
+    [DllImport("user32.dll")]
+    private static extern nint MonitorFromWindow(nint window, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(nint monitor, ref MonitorInfo monitorInfo);
 
     [DllImport("user32.dll")]
     private static extern nint GetWindow(nint window, uint command);

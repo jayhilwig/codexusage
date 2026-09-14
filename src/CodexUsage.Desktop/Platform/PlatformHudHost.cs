@@ -81,7 +81,10 @@ internal sealed class WindowsHudHost : IPlatformHudHost
         {
             var nativeButtonGroupWidth = (int)Math.Round(138 * scale);
             x = target.Bounds.Right - nativeButtonGroupWidth - margin - width;
-            y = target.Bounds.Top + (int)Math.Round(5 * scale);
+            var maximizedTopInset = WindowsOverlayInterop.GetMaximizedTopInset(
+                target.NativeHandle,
+                target.Bounds.Top);
+            y = target.Bounds.Top + maximizedTopInset + (int)Math.Round(5 * scale);
         }
 
         return new PixelPoint(Math.Max(target.Bounds.Left + margin, x), y - 4);

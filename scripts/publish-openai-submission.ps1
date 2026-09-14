@@ -58,7 +58,7 @@ description: Start, stop, or check the Windows x64 Codex title-bar usage compani
 
 Manage the bundled Windows x64 native companion through the launcher resolved relative to this skill directory.
 
-- Start, stop, or check status with `../../scripts/hud.ps1 -Action Start|Stop|Status`.
+- Start, stop, or check status with `../../scripts/hud.ps1 -Action Start|Stop|Status` directly in the current PowerShell command host. Do not start a second PowerShell process or assume a fixed PowerShell 7 path. If direct invocation is unavailable, resolve the shell once in this order: the current PowerShell executable from `(Get-Process -Id $PID).Path`, `Get-Command pwsh.exe`, `Get-Command powershell.exe`, then `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe` when present. Windows PowerShell 5.1 is sufficient; use the first resolved executable immediately.
 - Restart by stopping, then starting.
 
 Run Start and Restart only from a local Windows x64 Codex desktop host while the Codex desktop app is open. If the current environment is macOS, Linux, web, mobile, cloud, remote, or otherwise cannot launch a native Windows process on the user's interactive desktop, explain that this public plugin release currently supports Windows x64 local Codex desktop hosts only and do not run the launcher.

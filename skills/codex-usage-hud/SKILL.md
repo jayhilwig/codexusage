@@ -7,7 +7,7 @@ description: Start, stop, or check the local Codex title-bar usage companion. Us
 
 Manage the native companion through the platform launcher resolved relative to this skill directory.
 
-- Windows: run `../../scripts/hud.ps1 -Action Start|Stop|Status`.
+- Windows: run `../../scripts/hud.ps1 -Action Start|Stop|Status` directly in the current PowerShell command host. Do not start a second PowerShell process or assume a fixed PowerShell 7 path. If direct invocation is unavailable, resolve the shell once in this order: the current PowerShell executable from `(Get-Process -Id $PID).Path`, `Get-Command pwsh.exe`, `Get-Command powershell.exe`, then `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe` when present. Windows PowerShell 5.1 is sufficient; use the first resolved executable immediately.
 - macOS: run `sh ../../scripts/hud.sh Start|Stop|Status`.
 - Restart: stop, then start.
 
