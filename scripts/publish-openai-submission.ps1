@@ -63,7 +63,11 @@ Manage the bundled Windows x64 native companion through the launcher resolved re
 
 Run Start and Restart only from a local Windows x64 Codex desktop host while the Codex desktop app is open. If the current environment is macOS, Linux, web, mobile, cloud, remote, or otherwise cannot launch a native Windows process on the user's interactive desktop, explain that this public plugin release currently supports Windows x64 local Codex desktop hosts only and do not run the launcher.
 
-Starting a native desktop window may require host approval. Request the required GUI or external-process approval before the first Start or Restart attempt, launch directly in the user's interactive desktop context, wait briefly, and run Status to confirm the bundled helper stayed running.
+Starting a native desktop window may require host approval. Request the required GUI or external-process approval before the first Start or Restart attempt, and launch directly in the user's interactive desktop context. Do not first launch inside a restricted sandbox because the process may run without a visible overlay.
+
+For Start, invoke the launcher immediately. Do not search for the launcher first, inspect the environment first, narrate intermediate startup steps, or run a separate Status command after a successful Start. Run Status or perform diagnostic discovery only if Start returns an error or its result is ambiguous.
+
+For Restart, stop and then start immediately. Only run Status afterward if the restart result is ambiguous or reports an error.
 
 The packaged install uses `../../bin/win-x64/CodexUsage.Desktop.exe`. Keep the response concise; do not narrate implementation details unless an error occurs.
 
