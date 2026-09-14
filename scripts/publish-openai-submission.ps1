@@ -31,6 +31,14 @@ if ($LASTEXITCODE -ne 0) { throw "Publish failed for $runtime." }
 Get-ChildItem -LiteralPath $publishRoot -Filter '*.pdb' -Recurse -File |
     Remove-Item -Force
 
+$localRuntimeRoot = Join-Path $pluginRoot 'bin\win-x64'
+if (Test-Path -LiteralPath $localRuntimeRoot) {
+    Remove-Item -LiteralPath $localRuntimeRoot -Recurse -Force
+}
+New-Item -ItemType Directory -Path $localRuntimeRoot -Force | Out-Null
+Get-ChildItem -LiteralPath $publishRoot -Force |
+    Copy-Item -Destination $localRuntimeRoot -Recurse -Force
+
 foreach ($path in @('.codex-plugin', 'assets', 'skills')) {
     Copy-Item -LiteralPath (Join-Path $pluginRoot $path) -Destination $stagingRoot -Recurse -Force
 }

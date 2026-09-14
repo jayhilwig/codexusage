@@ -10,7 +10,6 @@ internal sealed class WindowsCodexWindowTracker : ICodexWindowTracker
     private const int ErrorInsufficientBuffer = 122;
     private const int DwmwaCaptionButtonBounds = 5;
     private const int DwmwaCloaked = 14;
-    private const int DwmwaUseImmersiveDarkMode = 20;
     private const uint GwOwner = 4;
     private const uint GaRootOwner = 3;
     private nint _cachedWindow;
@@ -43,7 +42,7 @@ internal sealed class WindowsCodexWindowTracker : ICodexWindowTracker
         var dpi = GetDpiForWindow(_cachedWindow);
         var scale = dpi > 0 ? dpi / 96d : 1d;
         var captionButtons = ReadCaptionButtons(_cachedWindow, bounds);
-        var dark = ReadDarkMode(_cachedWindow);
+        var dark = ReadDarkMode(bounds, captionButtons);
 
         snapshot = new CodexWindowSnapshot(
             _cachedWindow,
@@ -191,15 +190,65 @@ internal sealed class WindowsCodexWindowTracker : ICodexWindowTracker
             && cloaked != 0;
     }
 
-    private static bool ReadDarkMode(nint window)
+    private static bool ReadDarkMode(NativeRect windowBounds, ScreenRect? captionButtons)
     {
-        return DwmGetWindowAttributeInt(
-                window,
-                DwmwaUseImmersiveDarkMode,
-                out var dark,
-                sizeof(int)) == 0
-            ? dark != 0
-            : true;
+        var width = windowBounds.Right - windowBounds.Left;
+        var captionHeight = Math.Clamp(captionButtons?.Bottom ?? 32, 24, 80);
+        var clientChromeTop = windowBounds.Top + captionHeight + 8;
+        var sampleXs = new[]
+        {
+            windowBounds.Left + width / 4,
+            windowBounds.Left + (width * 2) / 5,
+            windowBounds.Left + (width * 3) / 5,
+            windowBounds.Left + (width * 4) / 5,
+        };
+        var sampleYs = new[] { clientChromeTop, clientChromeTop + 14 };
+        var desktop = GetDC(nint.Zero);
+        if (desktop == nint.Zero)
+        {
+            return true;
+        }
+
+        try
+        {
+            var samples = sampleXs
+                .SelectMany(x => sampleYs.Select(y => ReadSample(desktop, x, y)))
+                .ToArray();
+
+            var luminances = samples
+                .Select(static sample => sample.Luminance)
+                .Where(static value => value >= 0)
+                .OrderBy(static value => value)
+                .ToArray();
+            var median = luminances.Length == 0 ? -1 : luminances[luminances.Length / 2];
+            var dark = luminances.Length == 0 || median < 0.5;
+            return dark;
+        }
+        finally
+        {
+            ReleaseDC(nint.Zero, desktop);
+        }
+    }
+
+    private static (int X, int Y, int Red, int Green, int Blue, double Luminance) ReadSample(
+        nint desktop,
+        int x,
+        int y)
+    {
+        var color = GetPixel(desktop, x, y);
+        if (color == uint.MaxValue)
+        {
+            return (x, y, -1, -1, -1, -1);
+        }
+
+        var red = (int)(color & 0xFF);
+        var green = (int)((color >> 8) & 0xFF);
+        var blue = (int)((color >> 16) & 0xFF);
+        var redUnit = red / 255d;
+        var greenUnit = green / 255d;
+        var blueUnit = blue / 255d;
+        var luminance = 0.2126 * redUnit + 0.7152 * greenUnit + 0.0722 * blueUnit;
+        return (x, y, red, green, blue, luminance);
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -249,6 +298,15 @@ internal sealed class WindowsCodexWindowTracker : ICodexWindowTracker
 
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(nint window);
+
+    [DllImport("user32.dll")]
+    private static extern nint GetDC(nint window);
+
+    [DllImport("user32.dll")]
+    private static extern int ReleaseDC(nint window, nint deviceContext);
+
+    [DllImport("gdi32.dll")]
+    private static extern uint GetPixel(nint deviceContext, int x, int y);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern nint OpenProcess(uint desiredAccess, bool inheritHandle, uint processId);

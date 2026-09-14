@@ -32,7 +32,7 @@ internal sealed class TitlebarHudWindow : Window
     private readonly DispatcherTimer _trackerTimer;
     private readonly List<Action> _updateButtonHighlights = [];
     private CodexWindowSnapshot? _target;
-    private bool _dark = true;
+    private bool _dark = OperatingSystem.IsMacOS();
 
     public TitlebarHudWindow(
         HudViewModel viewModel,

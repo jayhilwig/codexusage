@@ -29,14 +29,15 @@ internal static class PlatformHudHostFactory
 
 internal sealed class WindowsHudHost : IPlatformHudHost
 {
-    private static readonly SolidColorBrush TitlebarBrush = new(Color.Parse("#EEF4F9"));
+    private static readonly SolidColorBrush LightTitlebarBrush = new(Color.Parse("#EEF4F9"));
+    private static readonly SolidColorBrush DarkTitlebarBrush = new(Color.Parse("#E51F2022"));
 
     public void Initialize(Window window)
     {
         // Transparent Avalonia windows are layered on Windows, which prevents ClearType
         // from compositing against a known background. Keep this tiny text surface opaque.
-        window.Background = TitlebarBrush;
-        window.TransparencyBackgroundFallback = TitlebarBrush;
+        window.Background = LightTitlebarBrush;
+        window.TransparencyBackgroundFallback = LightTitlebarBrush;
         window.TransparencyLevelHint = [WindowTransparencyLevel.None];
         window.UseLayoutRounding = true;
     }
@@ -51,14 +52,16 @@ internal sealed class WindowsHudHost : IPlatformHudHost
 
     public void ConfigureRoot(Border root)
     {
-        root.Background = TitlebarBrush;
+        root.Background = LightTitlebarBrush;
     }
 
     public void ApplyTheme(Window window, Border root, CodexWindowSnapshot? target)
     {
-        window.Background = TitlebarBrush;
-        window.TransparencyBackgroundFallback = TitlebarBrush;
-        root.Background = TitlebarBrush;
+        var dark = target?.IsDarkMode ?? false;
+        var titlebarBrush = dark ? DarkTitlebarBrush : LightTitlebarBrush;
+        window.Background = titlebarBrush;
+        window.TransparencyBackgroundFallback = titlebarBrush;
+        root.Background = titlebarBrush;
     }
 
     public void ConfigureNativeWindow(Window window, CodexWindowSnapshot target)
